@@ -1,0 +1,117 @@
+from enaml.layout.api import vbox, hbox, spacer
+from enaml.widgets.api import (
+    Window, Container, MPLCanvas, CheckBox, ComboBox, PushButton, Label, 
+    Field, FileDialogEx, ScrollArea, Separator, MainWindow, MenuBar, Menu, Action, ActionGroup
+)
+from enaml.core.api import Conditional, Looper
+from enaml.stdlib.fields import IntField
+
+
+from enaml_files.figure import FigDisplay
+from enaml_files.layout import *
+
+from depth_control_widget import DepthControl
+from core.model import *
+
+enamldef DataView(Container):
+
+    attr src
+    attr figures
+
+    padding = 0
+
+    constraints = [
+        vbox(
+            hbox(patient_lb, patient_cb, channel_lb, channel_cb),
+            hbox(patient, dc)
+        ),
+        dc.width == contents_width/10,
+        channel_lb.left == contents_h_center
+    ]
+
+    # Patient folder controls
+    Label: patient_lb:
+        hug_width = 'strong'
+        text = 'Patient: '
+    ComboBox: patient_cb:
+        items << src.d.patient_folders
+        index = 0
+        index ::
+            figures.models = [src.gen_fig_model('null')]
+
+    # Channel controls
+    Label: channel_lb:
+        hug_width = 'strong'
+        text = 'Channel:'
+    ComboBox: channel_cb:
+        items << src.get_channels(patient_cb.selected_item)
+        index = 0
+        index ::
+            if channel_cb.selected_item:  # Make sure selection is not empty
+                # figures.models = []
+                figure_models = []
+                for depth in dc.selected:
+
+                    # Generate figure model
+                    fig_model = src.gen_fig_model(patient_cb.selected_item)
+                    data_id = src.patients[patient_cb.selected_item].load(depth)
+                    fig_model.depth = depth
+
+                    # Generate fig_id with proper channel
+                    fig_model.channel = channel_cb.selected_item
+                    fig_model.fig_id = ('fig', data_id, fig_model.channel)
+
+                    # Create figure
+                    src.create_figure(fig_model.fig_id)
+
+                    # Need assignment to trigger observers (optional method)
+                    # figures.models = figures.models + [fig_model]
+                    figure_models.append(fig_model)
+
+                figures.models = figure_models
+
+    # Figure displays
+    ScrollArea: patient:
+        VContainer:
+            Looper:
+                iterable << figures.models
+                Conditional:
+                    condition << isinstance(loop_item, FigModel)
+                    FigDisplay:
+                        internal_src = src
+                        fig_model = loop_item
+                Conditional:
+                    condition << loop_index != len(figures.models) - 1
+                    Separator:
+                        orientation = 'horizontal'
+
+    DepthControl: dc:
+        depths << src.get_depths(patient_cb.selected_item)
+
+        on_select ::
+            if channel_cb.selected_item:  # Make sure selection is not empty
+                # figures.models = []
+                figure_models = []
+                for depth in dc.selected:
+
+                    # Generate figure model
+                    fig_model = src.gen_fig_model(patient_cb.selected_item)
+                    data_id = src.patients[patient_cb.selected_item].load(depth)
+                    fig_model.depth = depth
+
+                    # Generate fig_id with proper channel
+                    fig_model.channel = channel_cb.selected_item
+                    fig_model.fig_id = ('fig', data_id, fig_model.channel)
+
+                    # Create figure
+                    src.create_figure(fig_model.fig_id)
+
+                    # Need assignment to trigger observers
+                    # figures.models = figures.models + [fig_model]
+                    figure_models.append(fig_model)
+
+                figures.models = figure_models
+
+        on_init ::
+            for fig in figures.models:
+                fig.height = app_params.fig_height

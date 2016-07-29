@@ -4,13 +4,13 @@ from enaml.widgets.api import Container
 from enaml_files.figure import FigDisplay
 
 class VContainer(Container):
-    """ 
+    ''' 
     Vertical container with equal height objects
-    """
+    '''
     def layout_constraints(self):
-        """ Generate the list of constraints for the container.
-
-        """
+        ''' 
+        Generate the list of constraints for the container.
+        '''
         items = self.widgets()
         constraints = [vbox(*items)]
         for i in range(len(items) - 2):
@@ -18,6 +18,21 @@ class VContainer(Container):
             # Will have a separator, so i+2
             if isinstance(items[i], FigDisplay) and isinstance(items[i+2], FigDisplay):
                 constraints.append(items[i].height == items[i+2].height)
+        return constraints
+
+class HContainer(Container):
+    '''
+    Horizontal container with equal width objects
+    '''
+
+    def layout_constraints(self):
+
+        items = self.widgets()
+        constraints = [hbox(*items)]
+
+        for i in range(len(items) - 1):
+            constraints.append(items[i].width == items[i+1].width)
+
         return constraints
 
 

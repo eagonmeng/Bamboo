@@ -1,4 +1,5 @@
-from atom.api import Atom, Unicode, Range, Bool, List, Tuple, Dict, observe, Str, Float, Int
+from atom.api import Atom, Unicode, Range, Bool, ContainerList, Tuple, Dict, observe, Str, Float, Int
+from enaml.core.declarative import d_
 
 
 class Memory(Atom):
@@ -18,3 +19,13 @@ class FigModel(Atom):
     depth = Float()
     height = Int()
 
+class SourceData(Atom):
+    patient_folders = d_(ContainerList())
+    path = d_(Unicode())
+
+class AppParams(Atom):
+    fig_height = Int()
+    nr_figs = Int()
+
+class FigureModels(Atom):
+    models = d_(ContainerList())

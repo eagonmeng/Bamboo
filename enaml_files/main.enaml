@@ -8,11 +8,12 @@ from enaml.stdlib.fields import IntField
 
 
 from enaml_files.figure import FigDisplay
-from enaml_files.layout import *
+from enaml_files.layout import VContainer, HContainer
 from enaml_files.mbar import MBar
+from enaml_files.data_view import DataView
 
 from depth_control_widget import DepthControl
-from model import *
+from atom.api import ContainerList
 
 
 # Temp import from model
@@ -24,11 +25,11 @@ from core.model import *
 sys.path.pop(0)
 
 
-enamldef Main(MainWindow):
+enamldef Main(MainWindow): main:
     title = 'Bamboo'
-    attr src
+    attr main_src
     attr app_params
-    attr figures
+    attr main_figures
 
     initial_size = (800, 600)
 
@@ -36,43 +37,24 @@ enamldef Main(MainWindow):
         params = app_params
 
         settings.triggered ::
-            for fig in figures.models:
-                fig.height = app_params.fig_height
+            for figures in main_figures:
+                for fig in figures.models:
+                    fig.height = app_params.fig_height
 
     Container:
-        #constraints = [hbox(src_label, fld, load_src)]
-        #Label: src_label:
-        #    text = 'Source Directory:'
-        #Field: fld:
-        #    read_only = True
-        #    text << path
         constraints = [
             vbox(
                 hbox(path_lb, path_fld, load_src),
-                hbox(patient_lb, patient_cb, channel_lb, channel_cb),
-                hbox(patient, dc)
-            ),
-            dc.width == contents_width/10,
-            channel_lb.left == contents_h_center
+                hbox(view_lb, view_add, view_remove),
+                views
+            )
         ]
-        
-        # Figure height changer
-        # Label: l:
-        #     text = 'Figure height'
-        # IntField: f:
-        #     minimum = 0
-        #     value = 200
-        # PushButton: b:
-        #     text = 'Change'
-        #     clicked ::
-        #         for fig in figures:
-        #             fig.height = f.value
 
         # Directory display
         Label: path_lb:
             text = 'Current directory:'
         Field: path_fld:
-            text << src.path
+            text << main_src.d.path
             read_only = True
         PushButton: load_src:
             text = 'Load New'
@@ -80,100 +62,33 @@ enamldef Main(MainWindow):
                 src_dir = FileDialogEx.get_existing_directory()
                 if src_dir:
                     # Update source
-                    src.initialize(src_dir)
+                    main_src.initialize(src_dir)
 
                     # Reinitialize UI elements
-                    figures.models = [src.gen_fig_model('null')]
-                    patient_cb.items = src.patient_folders
-                    try:
-                        dc.depths = src.patients[str(patient_cb.selected_item)].depths
-                    except:
-                        dc.depths = []
-                    path_fld.text = src.path
+                    main_figures.models = [main_src.gen_fig_model('null')]
 
-        # Patient folder controls
-        Label: patient_lb:
+        # View controls
+        Label: view_lb:
+            text = 'View controls:'
+        PushButton: view_add:
             hug_width = 'strong'
-            text = 'Patient: '
-        ComboBox: patient_cb:
-            items << src.patient_folders
-            index = 0
-            index ::
-                figures.models = [src.gen_fig_model('null')]
-
-        # Channel controls
-        Label: channel_lb:
+            text = 'Add view'
+            clicked ::
+                figures = FigureModels()
+                figures.models = [main_src.gen_fig_model('null')]
+                main.main_figures = main.main_figures + [figures]
+        PushButton: view_remove:
             hug_width = 'strong'
-            text = 'Channel:'
-        ComboBox: channel_cb:
-            items << src.get_channels(patient_cb.selected_item)
-            index = 0
-            index ::
-                if channel_cb.selected_item:  # Make sure selection is not empty
-                    # figures.models = []
-                    figure_models = []
-                    for depth in dc.selected:
+            text = 'Remove view'
+            clicked ::
+                if main.main_figures:
+                    main.main_figures = main.main_figures[:-1]
 
-                        # Generate figure model
-                        fig_model = src.gen_fig_model(patient_cb.selected_item)
-                        data_id = src.patients[patient_cb.selected_item].load(depth)
-                        fig_model.depth = depth
-
-                        # Generate fig_id with proper channel
-                        fig_model.channel = channel_cb.selected_item
-                        fig_model.fig_id = ('fig', data_id, fig_model.channel)
-
-                        # Create figure
-                        src.create_figure(fig_model.fig_id)
-
-                        # Need assignment to trigger observers
-                        # figures.models = figures.models + [fig_model]
-                        figure_models.append(fig_model)
-
-                    figures.models = figure_models
-
-        # Figure displays
-        ScrollArea: patient:
-            VContainer:
-                Looper:
-                    iterable << figures.models
-                    Conditional:
-                        condition << isinstance(loop_item, FigModel)
-                        FigDisplay:
-                            internal_src = src
-                            fig_model = loop_item
-                    Conditional:
-                        condition << loop_index != len(figures.models) - 1
-                        Separator:
-                            orientation = 'horizontal'
-
-        DepthControl: dc:
-            depths << src.patients[str(patient_cb.selected_item)].depths
-
-            on_select ::
-                if channel_cb.selected_item:  # Make sure selection is not empty
-                    # figures.models = []
-                    figure_models = []
-                    for depth in dc.selected:
-
-                        # Generate figure model
-                        fig_model = src.gen_fig_model(patient_cb.selected_item)
-                        data_id = src.patients[patient_cb.selected_item].load(depth)
-                        fig_model.depth = depth
-
-                        # Generate fig_id with proper channel
-                        fig_model.channel = channel_cb.selected_item
-                        fig_model.fig_id = ('fig', data_id, fig_model.channel)
-
-                        # Create figure
-                        src.create_figure(fig_model.fig_id)
-
-                        # Need assignment to trigger observers
-                        # figures.models = figures.models + [fig_model]
-                        figure_models.append(fig_model)
-
-                    figures.models = figure_models
-
-            on_init ::
-                for fig in figures.models:
-                    fig.height = app_params.fig_height
+        HContainer: views:
+            Looper:
+                iterable << main_figures
+                Conditional:
+                    condition << isinstance(loop_item, FigureModels)
+                    DataView: data_view:
+                        src = main_src
+                        figures = loop_item

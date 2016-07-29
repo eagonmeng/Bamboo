@@ -2,7 +2,7 @@ from patient import Patient
 from core.data import settings
 import os
 from matplotlib.figure import Figure
-from model import Memory, FigModel
+from model import Memory, FigModel, SourceData
 
 
 class Source(object):
@@ -14,22 +14,27 @@ class Source(object):
     def __init__(self, path=settings.source_path):
         # All the stuffs
         self.memory = Memory()
+        self.d = SourceData()
 
         self.initialize(path)
 
     def initialize(self, path):
         # Add separator if necessary
-        self.path = os.path.join(path, '')
+        self.d.path = os.path.join(path, '')
 
         # Simple catch for bad paths
-        if not os.path.isdir(self.path):
-            raise IOError('Directory does not exist' + self.path)
-        self.patient_folders = next(os.walk(path))[1]
+        if not os.path.isdir(self.d.path):
+            print 'Directory does not exist: ' + self.d.path
+            self.d.path = ''
+            self.d.patient_folders = []
+            self.patients = {}
+        else:
+            self.d.patient_folders = next(os.walk(path))[1]
 
-        # Initialize all patient objects
-        self.patients = {}
-        for i in self.patient_folders:
-            self.patients[i] = Patient(os.path.join(self.path, i, ''), self)
+            # Initialize all patient objects
+            self.patients = {}
+            for i in self.d.patient_folders:
+                self.patients[i] = Patient(os.path.join(self.d.path, i, ''), self)
 
         # Refresh cache
         self.memory.cache.clear()
@@ -111,3 +116,13 @@ class Source(object):
             self.load(data_id, channels)
 
         return self.memory.cache[data_id]
+
+    def get_depths(self, patient):
+        '''
+        Function to return depths of a patient
+        '''
+
+        try:
+            return self.patients[str(patient)].depths
+        except KeyError:
+            return []

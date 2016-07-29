@@ -5,8 +5,6 @@ from matplotlib.figure import Figure
 import enaml_files
 import settings
 
-from model import *
-
 from atom.api import ContainerList, Atom
 from enaml.core.declarative import d_
 
@@ -28,11 +26,10 @@ if __name__ == '__main__':
     params = settings.load_params(params)
 
     figures = FigureModels()
-    figures.models = [src.gen_fig_model(src.patient_folders[0])]
-
+    figures.models = [src.gen_fig_model('null')]
 
     # Load display
-    main = Main(src=src, app_params = params, figures = figures)
+    main = Main(main_src=src, app_params = params, main_figures = [figures])
     main.show()
 
     app.start()
