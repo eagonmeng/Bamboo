@@ -28,8 +28,6 @@ enamldef Main(MainWindow):
     title = 'Bamboo'
     attr src
     attr app_params
-    attr path: str = src.path
-    # attr figures = [src.gen_fig_model(src.patient_folders[2]) for i in range(app_params.nr_figs)]
     attr figures
 
     initial_size = (800, 600)
@@ -48,15 +46,9 @@ enamldef Main(MainWindow):
         #Field: fld:
         #    read_only = True
         #    text << path
-        #PushButton: load_src:
-        #    text = 'Load New'
-        #    clicked ::
-        #        src_dir = FileDialogEx.get_existing_directory()
-        #        if src_dir:
-        #            path = src_dir
         constraints = [
             vbox(
-                hbox(path_lb, path_fld),
+                hbox(path_lb, path_fld, load_src),
                 hbox(patient_lb, patient_cb, channel_lb, channel_cb),
                 hbox(patient, dc)
             ),
@@ -80,18 +72,34 @@ enamldef Main(MainWindow):
         Label: path_lb:
             text = 'Current directory:'
         Field: path_fld:
-            text = path
+            text << src.path
             read_only = True
+        PushButton: load_src:
+            text = 'Load New'
+            clicked ::
+                src_dir = FileDialogEx.get_existing_directory()
+                if src_dir:
+                    # Update source
+                    src.initialize(src_dir)
+
+                    # Reinitialize UI elements
+                    figures.models = [src.gen_fig_model('null')]
+                    patient_cb.items = src.patient_folders
+                    try:
+                        dc.depths = src.patients[str(patient_cb.selected_item)].depths
+                    except:
+                        dc.depths = []
+                    path_fld.text = src.path
 
         # Patient folder controls
         Label: patient_lb:
             hug_width = 'strong'
             text = 'Patient: '
         ComboBox: patient_cb:
-            items = src.patient_folders
+            items << src.patient_folders
             index = 0
             index ::
-                figures.models = [src.gen_fig_model(src.patient_folders[0])]
+                figures.models = [src.gen_fig_model('null')]
 
         # Channel controls
         Label: channel_lb:

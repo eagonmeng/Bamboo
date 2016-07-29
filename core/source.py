@@ -15,6 +15,9 @@ class Source(object):
         # All the stuffs
         self.memory = Memory()
 
+        self.initialize(path)
+
+    def initialize(self, path):
         # Add separator if necessary
         self.path = os.path.join(path, '')
 
@@ -28,6 +31,9 @@ class Source(object):
         for i in self.patient_folders:
             self.patients[i] = Patient(os.path.join(self.path, i, ''), self)
 
+        # Refresh cache
+        self.memory.cache.clear()
+        
         # Initialize null views
         self.create_figure(('fig', 'null', 'null'))
 
@@ -91,7 +97,10 @@ class Source(object):
         '''
         Function to return list of channels
         '''
-        cur_patient = self.patients[patient]
+        try:
+            cur_patient = self.patients[patient]
+        except KeyError:
+            return []
         if not cur_patient.depths:
             return []
         src_depth = cur_patient.depths[src_depth_idx]
