@@ -1,0 +1,18 @@
+from enaml.widgets.api import MainWindow, MenuBar, Menu, Action, ActionGroup
+from enaml_files.task_dialog import SettingsDialog
+
+enamldef MBar(MenuBar):
+    attr params
+    alias settings
+    Menu:
+        title = '&File'
+        Action:
+            text = 'New'
+            triggered :: print 'help'
+
+    Menu:
+        title = '&Options'
+        Action: settings:
+            text = 'Settings'
+            triggered ::
+                SettingsDialog(params=params).exec_()

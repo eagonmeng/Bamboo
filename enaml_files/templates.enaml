@@ -1,0 +1,14 @@
+from enaml.layout.api import vbox, hbox, spacer
+from enaml.widgets.api import Container, PushButton, Html, Window
+
+template DataView(Content):
+    Container: 
+        alias content
+
+        # Constraints
+        constraints = [
+            vbox(
+                hbox(spacer, check),
+                content
+            )
+        ]

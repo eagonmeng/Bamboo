@@ -1,0 +1,50 @@
+from enaml.layout.api import align, hbox, spacer
+from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
+from enaml.stdlib.task_dialog import (TaskDialogBody, TaskDialogCommandArea,
+    TaskDialogContentArea, TaskDialogDetailsArea, TaskDialogFootnoteArea,
+    TaskDialogIconArea, TaskDialogInstructionArea, TaskDialogStyleSheet)
+from enaml.widgets.api import (CheckBox, Container, Dialog, Field, Label,
+    ImageView, PushButton, RadioButton, Window)
+from enaml.stdlib.fields import IntField
+
+
+enamldef SettingsDialog(Dialog):
+    title = 'Settings'
+
+    attr params
+
+    TaskDialogStyleSheet:
+            pass
+    TaskDialogBody:
+        TaskDialogInstructionArea:
+            Label:
+                style_class = 'task-dialog-instructions'
+                text = 'Settings'
+        TaskDialogContentArea:
+            constraints = [
+                hbox(fh_lb, fh)
+            ]
+            # Label:
+            #     style_class = 'task-dialog-content'
+            #     text = 'This is some additional dialog content.'
+            Label: fh_lb:
+                text = 'Figure height'
+            IntField: fh:
+                value := params.fig_height
+            # Label: fnr_lb:
+            #     text = 'Number of figures'
+            # Field: fnr:
+            #     text := params.
+
+        TaskDialogDetailsArea: details:
+            pass
+        TaskDialogCommandArea:
+            constraints = [
+                hbox(bbox)
+            ]
+            DialogButtonBox: bbox:
+                buttons = [
+                    DialogButton('OK', 'accept')
+                ]
+        TaskDialogFootnoteArea:
+            pass

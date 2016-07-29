@@ -1,0 +1,41 @@
+from enaml.layout.api import vbox, hbox, spacer
+from enaml.widgets.api import Window, Container, MPLCanvas, CheckBox, ComboBox, PushButton, Html, Label, Field
+
+enamldef FigDisplay(Container): fig:
+    attr internal_src
+    attr fig_model
+
+    padding = (0,0,0,0)
+
+    constraints << [
+        vbox(
+            hbox(d_lb, d_fld, spacer, check),
+            hbox(canvas)
+        ),
+        fig.height == fig_model.height
+    ]
+
+    # # Depth selection
+    # ComboBox: ds: 
+    #     items = map(str, internal_src.patients[fig_model.patient].depths)
+    #     index = 0
+    Label: d_lb:
+        text = 'Depth:'
+    Field: d_fld:
+        text << str(fig_model.depth)
+    # PushButton: load:
+    #     text = 'Load'
+    #     clicked ::
+    #         depth = float(ds.selected_item)
+    #         data_id = internal_src.patients[fig_model.patient].load(depth)
+    #         internal_src.create_figure(('fig', data_id), fig_model.channel)
+    #         fig_model.fig_id = ('fig', data_id)
+
+    CheckBox: check:
+        text = 'Toolbar Visible'
+        checked := canvas.toolbar_visible
+
+    MPLCanvas: canvas:
+        figure << internal_src.memory.cache[fig_model.fig_id]
+        resist_width = 'weak'
+        resist_height = 'weak'
