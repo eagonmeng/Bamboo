@@ -1,5 +1,5 @@
 # Core package location
-core_path = '/home/eagonmeng/charizard/core'
+core_path = ''
 
 # Default figure height
 fig_height = 200

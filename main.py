@@ -11,10 +11,10 @@ from atom.api import ContainerList, Atom
 from enaml.core.declarative import d_
 
 # Temp import from model
-sys.path.insert(0, settings.core_path)
+# sys.path.insert(0, settings.core_path)
 import core
 from core.model import *
-sys.path.pop(0)
+# sys.path.pop(0)
 
 # Main
 if __name__ == '__main__':
