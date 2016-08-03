@@ -22,7 +22,6 @@ class DepthControl(RawWidget):
     selected = d_(ContainerList())
 
     on_select = d_(Event(bool), writable=False)
-    on_init = d_(Event(bool), writable=False)
 
     def create_widget(self, parent):
 
@@ -31,8 +30,6 @@ class DepthControl(RawWidget):
         widget.selected = self.selected
 
         widget.s.selected_updated.connect(self.on_selection)
-
-        self.on_init(True)
 
         return widget
 

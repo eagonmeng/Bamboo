@@ -1,7 +1,10 @@
 import enaml
 from enaml.qt.qt_application import QtApplication
 import sys
-from matplotlib.figure import Figure
+
+import matplotlib
+matplotlib.use('TkAgg') # Maybe this helps?
+
 import enaml_files
 import settings
 

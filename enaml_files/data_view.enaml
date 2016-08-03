@@ -33,6 +33,7 @@ enamldef DataView(Container):
     Label: patient_lb:
         hug_width = 'strong'
         text = 'Patient: '
+
     ComboBox: patient_cb:
         items << src.d.patient_folders
         index = 0
@@ -112,6 +113,6 @@ enamldef DataView(Container):
 
                 figures.models = figure_models
 
-        on_init ::
+        activated ::
             for fig in figures.models:
                 fig.height = app_params.fig_height

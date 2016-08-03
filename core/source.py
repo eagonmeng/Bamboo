@@ -48,6 +48,7 @@ class Source(object):
         NEED MEMORY HANDLING
         '''
         self.memory.cache[data_id] = data
+        print 'Added following to cache: ' + str(data_id)
 
     def write(self, storage, params):
         '''
@@ -85,7 +86,6 @@ class Source(object):
             self.load(fig_id, fig)
             # Cache contents
             # print(map(str, self.memory.cache.keys()))
-            print 'Added following to cache: ' + str(fig_id)
 
         else:
             pass
