@@ -65,7 +65,9 @@ enamldef Main(MainWindow): main:
                     main_src.initialize(src_dir)
 
                     # Reinitialize UI elements
-                    main_figures.models = [main_src.gen_fig_model('null')]
+                    figures = FigureModels()
+                    figures.models = [main_src.gen_fig_model('null')]
+                    main.main_figures = [figures]
 
         # View controls
         Label: view_lb:
