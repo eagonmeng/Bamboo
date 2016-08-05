@@ -38,7 +38,7 @@ class Source(object):
 
         # Refresh cache
         self.memory.cache.clear()
-        
+
         # Initialize null views
         self.create_figure(('fig', 'null', 'null'))
 
@@ -58,7 +58,7 @@ class Source(object):
 
     def create_figure(self, fig_id):
         '''
-        Function to create figure from data in cache
+        Function to create matplotlib figure from data in cache
         '''
         # fig_id = ('fig', data_id)
         data_id = fig_id[1]
@@ -92,11 +92,11 @@ class Source(object):
 
 
 
-    def gen_fig_model(self, init_patient, init_height=200, init_id=('fig', 'null', 'null'), init_channel='CRAW_01'):
+    def gen_fig_model(self, init_patient, init_height=200, init_channel=''):
         '''
         Function to return an atom FigModel
         '''
-        return FigModel(fig_id=init_id, patient=init_patient, channel=init_channel, height=init_height)
+        return FigModel(patient=init_patient, channel=init_channel, height=init_height)
 
     def get_channels(self, patient, src_depth_idx=0):
         '''

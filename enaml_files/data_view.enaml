@@ -48,28 +48,10 @@ enamldef DataView(Container):
         items << src.get_channels(patient_cb.selected_item)
         index = 0
         index ::
-            if channel_cb.selected_item:  # Make sure selection is not empty
-                # figures.models = []
-                figure_models = []
-                for depth in dc.selected:
+            if patient_cb.selected_item and dc.selected:  # Make sure selection is not empty
 
-                    # Generate figure model
-                    fig_model = src.gen_fig_model(patient_cb.selected_item)
-                    data_id = src.patients[patient_cb.selected_item].load(depth)
-                    fig_model.depth = depth
-
-                    # Generate fig_id with proper channel
+                for fig_model in figures.models:
                     fig_model.channel = channel_cb.selected_item
-                    fig_model.fig_id = ('fig', data_id, fig_model.channel)
-
-                    # Create figure
-                    src.create_figure(fig_model.fig_id)
-
-                    # Need assignment to trigger observers (optional method)
-                    # figures.models = figures.models + [fig_model]
-                    figure_models.append(fig_model)
-
-                figures.models = figure_models
 
     # Figure displays
     ScrollArea: patient:
@@ -97,15 +79,9 @@ enamldef DataView(Container):
 
                     # Generate figure model
                     fig_model = src.gen_fig_model(patient_cb.selected_item)
-                    data_id = src.patients[patient_cb.selected_item].load(depth)
+                    fig_model.data_id = src.patients[patient_cb.selected_item].load(depth)
                     fig_model.depth = depth
-
-                    # Generate fig_id with proper channel
                     fig_model.channel = channel_cb.selected_item
-                    fig_model.fig_id = ('fig', data_id, fig_model.channel)
-
-                    # Create figure
-                    src.create_figure(fig_model.fig_id)
 
                     # Need assignment to trigger observers
                     # figures.models = figures.models + [fig_model]

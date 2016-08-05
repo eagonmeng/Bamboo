@@ -13,19 +13,28 @@ class Memory(Atom):
     #     print change
 
 class FigModel(Atom):
-    fig_id = Tuple()
-    patient = Str()
-    channel = Str()
-    depth = Float()
-    height = Int()
+    data_id = d_(Tuple())
+    patient = d_(Unicode())
+    channel = d_(Unicode())
+    depth = d_(Float())
+    height = d_(Int())
+    display = d_(Str('RAW'))
+
+    # @observe('display', 'patient', 'depth')
+    # def update_data_id(self, change):
+    #     '''
+    #     Update data_id when components change
+    #     '''
+    #     if self.display == 'RAW':
+    #         self.data_id = ('std', self.patient, self.depth)
 
 class SourceData(Atom):
     patient_folders = d_(ContainerList())
     path = d_(Unicode())
 
 class AppParams(Atom):
-    fig_height = Int()
-    nr_figs = Int()
+    fig_height = d_(Int())
+    nr_figs = d_(Int())
 
 class FigureModels(Atom):
     models = d_(ContainerList())
