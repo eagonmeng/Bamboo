@@ -29,7 +29,7 @@ if __name__ == '__main__':
     params = settings.load_params(params)
 
     figures = FigureModels()
-    figures.models = [src.gen_fig_model('null')]
+    figures.models = []
 
     # Load display
     main = Main(main_src=src, app_params = params, main_figures = [figures])

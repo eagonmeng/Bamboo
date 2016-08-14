@@ -38,7 +38,8 @@ enamldef DataView(Container):
         items << src.d.patient_folders
         index = 0
         index ::
-            figures.models = [src.gen_fig_model('null')]
+            figures.models = []
+            # figures.models = [src.gen_fig_model('null')]
 
     # Channel controls
     Label: channel_lb:
