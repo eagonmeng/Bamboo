@@ -54,6 +54,9 @@ class DefaultPlotWidget(pg.PlotWidget):
         # Modes: subsample, mean, peak
         self.getPlotItem().setDownsampling(ds=True, auto=True, mode='subsample')
 
+        # Disable autorange for performance enhancements
+        self.getViewBox().disableAutoRange()
+        
         # self.getViewBox().setMouseMode(pg.ViewBox.RectMode)
 
         # self.show()
@@ -165,7 +168,7 @@ class DefaultPlotWidget(pg.PlotWidget):
             points = data.shape[0]
             lines = data.shape[1]
             if lines > 1:
-                self.getViewBox().disableAutoRange()
+                # self.getViewBox().disableAutoRange()
 
                 # Color option for separate multiple plots
                 # for i in range(lines):
@@ -180,7 +183,8 @@ class DefaultPlotWidget(pg.PlotWidget):
                 item.setPen(pg.mkPen('w'))
                 self.addItem(item)
 
-                self.getViewBox().enableAutoRange()
+                # self.getViewBox().enableAutoRange()
+                self.autoRange()
         except IndexError:
             self.plot(np.arange(len(data)) / self.x_scale, data / self.y_scale, pen=pg.mkPen(width=1))
 

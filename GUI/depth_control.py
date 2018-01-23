@@ -175,7 +175,7 @@ class DepthControl(QtGui.QWidget):
             adjusted_depths.append(depth)
 
         # Setup appropriate tooltips
-        if self.display_hashes:
+        if self.display_hashes and self.patient is not None and self.channel is not None:
             hashrates = self.patient.hashrates[self.channel]
         else:
             hashrates = None

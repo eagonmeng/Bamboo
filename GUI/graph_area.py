@@ -6,14 +6,31 @@ pg.setConfigOption('useOpenGL', False)
 import GUI
 
 from time import time
+import cProfile, pstats, StringIO
 
 # Timing decorator
+# def timeit(method):
+#     def func(self):
+#         start = time()
+#         result = method(self)
+#         end = time()
+#         print('%r %.4f (s)' % (method.__name__, end-start))
+
+#         return result
+#     return func
+
 def timeit(method):
     def func(self):
-        start = time()
+        pr = cProfile.Profile()
+        pr.enable()
         result = method(self)
-        end = time()
-        print('%r %.4f (s)' % (method.__name__, end-start))
+        pr.disable()
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        print('Profiling: %r' % method.__name__)
+        ps.print_stats()
+        print s.getvalue()
 
         return result
     return func
@@ -212,17 +229,20 @@ class GraphArea(pg.QtGui.QWidget):
         view_hbox.addWidget(self.y_range_max, stretch=0)
 
         # Connect signal
-        self.update_x_range_button.clicked.connect(
-            lambda: self.s.x_range_updated.emit(
-                (float(self.x_range_min.text()), float(self.x_range_max.text()))
-            )
-        )
+        # self.update_x_range_button.clicked.connect(
+        #     lambda: self.s.x_range_updated.emit(
+        #         (float(self.x_range_min.text()), float(self.x_range_max.text()))
+        #     )
+        # )
 
-        self.update_y_range_button.clicked.connect(
-            lambda: self.s.y_range_updated.emit(
-                (float(self.y_range_min.text()), float(self.y_range_max.text()))
-            )
-        )
+        # self.update_y_range_button.clicked.connect(
+        #     lambda: self.s.y_range_updated.emit(
+        #         (float(self.y_range_min.text()), float(self.y_range_max.text()))
+        #     )
+        # )
+
+        self.update_x_range_button.clicked.connect(self.emit_x_range_updated)
+        self.update_y_range_button.clicked.connect(self.emit_y_range_updated)
 
         # Scroll area
         self.scroll = ScrollArea()
@@ -359,22 +379,30 @@ class GraphArea(pg.QtGui.QWidget):
         self.update_layout()
         self.update_plots()
 
-    # @timeit
+    @timeit
     def update_plots(self):
         # Update individual plots
         patient = self.src.patients[self.cur_patient]
         channel = self.ccombo.value()
+        auto_range = False
 
         # Notify depth control if necessary
         if settings.preprocess_hashes:
             if channel in settings.spike_channels:
                 self.dc.updateChannel(channel)
+                self.emit_x_range_updated()
+                self.emit_y_range_updated()
             else:
                 self.dc.updateChannel(None)
+                auto_range = True
             self.dc.repaint()
 
+
+        # Update all the split dock widgets
         for depth, dock in self.selected_depths.iteritems():
             dock.widgets[0].update(self.src, patient, channel, depth)
+            if auto_range:
+                dock.widgets[0].auto_range_contents()
 
     def depths_updated(self):
         self.dc.repaint()
@@ -417,15 +445,11 @@ class GraphArea(pg.QtGui.QWidget):
         # Update views
         # print('updating')
         if self.auto_default_range:
-            self.s.x_range_updated.emit(
-                (float(self.x_range_min.text()), float(self.x_range_max.text()))
-            )
-            self.s.y_range_updated.emit(
-                (float(self.y_range_min.text()), float(self.y_range_max.text()))
-            )
+            self.emit_x_range_updated()
+            self.emit_y_range_updated()
         # print('updated')
 
-    # @timeit
+    @timeit
     def update_layout(self):
         length = len(self.selected_depths)
         self.dock_area.setMinimumSize(0, length * self.min_plot_height)
@@ -446,7 +470,19 @@ class GraphArea(pg.QtGui.QWidget):
             self.toggle_annotation.toggled.connect(split_dock_widget.toggle_second_widget)
 
         dock.addWidget(split_dock_widget)
-        self.selected_depths[depth] = dock        
+        self.selected_depths[depth] = dock       
+
+    ## Emit the signals necessary to update all the plots ##
+    def emit_x_range_updated(self):
+        self.s.x_range_updated.emit(
+            (float(self.x_range_min.text()), float(self.x_range_max.text()))
+        )
+
+    def emit_y_range_updated(self):
+        self.s.y_range_updated.emit(
+            (float(self.y_range_min.text()), float(self.y_range_max.text()))
+        )
+
 
 ''' 
 Old update method
@@ -501,6 +537,10 @@ class SplitDockWidget(QtGui.QWidget):
             self.add_second_widget(GUI.AnnotateWidget(src, patient, depth, src.get_channel_number(channel)))
         else:
             self.remove_second_widget()
+
+    # Resize all elements to the automatic range
+    def auto_range_contents(self):
+        self.main_widget.autoRange()   
 
     def toggle_second_widget(self, checked):
         if self.second_widget is not None:
