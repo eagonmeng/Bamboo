@@ -6,7 +6,9 @@ pg.setConfigOption('useOpenGL', False)
 import GUI
 
 from time import time
-import cProfile, pstats, StringIO
+import tqdm
+
+# import cProfile, pstats, StringIO
 
 # Timing decorator
 # def timeit(method):
@@ -19,21 +21,21 @@ import cProfile, pstats, StringIO
 #         return result
 #     return func
 
-def timeit(method):
-    def func(self):
-        pr = cProfile.Profile()
-        pr.enable()
-        result = method(self)
-        pr.disable()
-        s = StringIO.StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        print('Profiling: %r' % method.__name__)
-        ps.print_stats()
-        print s.getvalue()
+# def timeit(method):
+#     def func(self):
+#         pr = cProfile.Profile()
+#         pr.enable()
+#         result = method(self)
+#         pr.disable()
+#         s = StringIO.StringIO()
+#         sortby = 'cumulative'
+#         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+#         print('Profiling: %r' % method.__name__)
+#         ps.print_stats()
+#         print s.getvalue()
 
-        return result
-    return func
+#         return result
+#     return func
 
 # Override scroll area behavior
 class ScrollArea(pg.QtGui.QScrollArea):
@@ -159,7 +161,11 @@ class GraphArea(pg.QtGui.QWidget):
         # Signals for interacting with all children
         self.s = UpdateSignal()
 
+        # Progress bar
+        self.pbar = None
+
         self.init_UI()
+
 
     def init_UI(self):
         # Patient selection
@@ -379,7 +385,7 @@ class GraphArea(pg.QtGui.QWidget):
         self.update_layout()
         self.update_plots()
 
-    @timeit
+    # @timeit
     def update_plots(self):
         # Update individual plots
         patient = self.src.patients[self.cur_patient]
@@ -397,13 +403,19 @@ class GraphArea(pg.QtGui.QWidget):
                 auto_range = True
             self.dc.repaint()
 
+        # Progress bar update
+        if self.pbar is not None:
+            self.pbar.set_description('Plotting data')
 
         # Update all the split dock widgets
         for depth, dock in self.selected_depths.iteritems():
             dock.widgets[0].update(self.src, patient, channel, depth)
             if auto_range:
                 dock.widgets[0].auto_range_contents()
+            if self.pbar is not None:
+                self.pbar.update(1)
 
+    # @timeit
     def depths_updated(self):
         self.dc.repaint()
         previous = set(self.selected_depths.iterkeys())
@@ -411,7 +423,25 @@ class GraphArea(pg.QtGui.QWidget):
 
         # Remove depths in previous not in updated
         purge = previous - updated
+
+        # Add plot items necessary for new depths
+        add = updated - previous
+
+        # Instantiate progress bar
+        total_length = len(purge) + len(add) + (2 * len(updated))
+
+        if total_length > 0:
+            print('\nVisualizing for channel: %s' % self.ccombo.value())
+            self.pbar = tqdm.tqdm(total=total_length)
+
+        ### Delete previous docks ###
+
+        # cur = time()
+
         for depth in purge:
+            # Progress bar description
+            if self.pbar is not None:
+                self.pbar.set_description('Deleting docks')
 
             # Clear widget
             # Seems bugged - does this actually close the widget?
@@ -429,14 +459,41 @@ class GraphArea(pg.QtGui.QWidget):
 
             self.selected_depths.pop(depth)
 
-        # Add plot items necessary for new depths
-        add = updated - previous
+            if self.pbar is not None:
+                self.pbar.update(1)
+
+
+        ### Add new docks ###
+
+        # print('Time to delete: %f' % (time() - cur))
+        # cur = time()
+
         for depth in add:
+            # Progress bar update
+            if self.pbar is not None:
+                self.pbar.set_description('Loading data')
+
             # Wrap the widget in a dock
             widget =  GUI.DefaultPlotWidget(self.src)
             self.add_plot_dock(depth, widget)
+
+            if self.pbar is not None:
+                self.pbar.update(1)
+
+        # print('Time to add: %f' % (time() - cur))
+        # cur = time()
+
+        ### Update layout ###
         self.update_layout()
+
+        # print('Time to update layout: %f' % (time() - cur))
+        # cur = time()
+
+        ### Update plots ###
+
         self.update_plots()
+        # print('Time to update plots: %f' % (time() - cur))
+
 
         # Update annotate toggle
         if settings.annotation_on:
@@ -449,13 +506,25 @@ class GraphArea(pg.QtGui.QWidget):
             self.emit_y_range_updated()
         # print('updated')
 
-    @timeit
+        if self.pbar is not None:
+            self.pbar.close()
+            self.pbar = None
+
+    # @timeit
     def update_layout(self):
         length = len(self.selected_depths)
         self.dock_area.setMinimumSize(0, length * self.min_plot_height)
+
+        # Progress bar update
+        if self.pbar is not None:
+            self.pbar.set_description('Populating visual elements')
+
         for depth in sorted(self.selected_depths.iterkeys(), reverse=True):
             dock = self.selected_depths[depth]
             self.dock_area.addDock(dock, position='bottom')
+
+            if self.pbar is not None:
+                self.pbar.update(1)
 
     def add_plot_dock(self, depth, widget):
         dock = Dock(depth, size=(1,1), closable=False, autoOrientation=False)

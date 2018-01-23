@@ -324,7 +324,7 @@ class DepthControl(QtGui.QWidget):
                     self.selected.append(depth[0])
 
             if self.selected:
-                print('Selected: ' + str(self.selected))
+                print('\nSelected: ' + str(self.selected))
 
             # Make sure to set self as actively being selected
             self.active_select = True
