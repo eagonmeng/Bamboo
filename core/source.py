@@ -152,7 +152,8 @@ class Source(object):
             csv_writer = csv.writer(out, delimiter=',')
             csv_writer.writerow(self.patients[patient].patient_label)
             for key, value in self.patients[patient].depth_labels.iteritems():
-                csv_writer.writerow([key[0], key[1]] + value)
+                if value:
+                    csv_writer.writerow([key[0], key[1]] + value)
 
     # Save hash rates
     def save_patient_hashrates(self, patient):

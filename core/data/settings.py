@@ -47,13 +47,16 @@ annotation_path = 'annotations'
 
 # Annotation label defaults
 patient_labels = ['Parkinson', 'Dystonia', 'Essential Tremor', 'OCD', 'MDD', 'STN', 'GPi', 'VIM']
-depth_labels = ['STN', 'ZI', 'GPi', 'VIM', 'Thalamus', 'GPe', 'Putamen', 'White Matter', 'Border Cell', 'Dying', 'Spikes']
+depth_labels = ['Spikes', 'STN', 'ZI', 'GPe', 'GPi', 'VIM', 'Thalamus', 'Putamen', 'White Matter', 'Border Cell', 'Dying', 'Artifact']
 target_labels = ['STN', 'GPi', 'VIM']
 
 
 '''
 GUI Settings
 '''
+
+# Individual plot heights
+plot_height = 200
 
 # Units of X axis
 data_x_label = 'Time'
@@ -82,6 +85,8 @@ default_spike_audio = False
 spike_width = 0.001
 # Spike threshold in standard deviations
 spike_threshold = 3 
+# Show Audio progress line
+show_audio_line = True
 
 
 '''

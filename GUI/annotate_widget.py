@@ -2,6 +2,14 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
 from core.data import settings
 
+
+# Signal class
+class UpdateSignal(QtCore.QObject):
+
+    annotations_updated = QtCore.pyqtSignal(tuple)
+
+
+# Annotation widget for individual depths
 class AnnotateWidget(QtGui.QWidget):
 	def __init__(self, src, patient, depth, channel):
 		super(AnnotateWidget, self).__init__()
@@ -20,11 +28,12 @@ class AnnotateWidget(QtGui.QWidget):
 
 		# Check if the patient already has selected depth labels
 		preloaded = False
-		if self.id in self.patient.depth_labels:
-			preloaded = True
-			for label in self.patient.depth_labels[self.id]:
-				if label not in self.list_items:
-					self.list_items.append(label)
+		if self.patient is not None:
+			if self.id in self.patient.depth_labels:
+				preloaded = True
+				for label in self.patient.depth_labels[self.id]:
+					if label not in self.list_items:
+						self.list_items.append(label)
 
 		# Add all items
 		for item in self.list_items:
@@ -89,9 +98,62 @@ class AnnotateWidget(QtGui.QWidget):
 	# 		list_item.setSelected(True)
 
 	def selection_changed(self):
-		self.patient.depth_labels[self.id] = [str(item.text()) for item in self.list_widget.selectedItems()]
+		if self.patient is not None:
+			self.patient.depth_labels[self.id] = [str(item.text()) for item in self.list_widget.selectedItems()]
 
 
+# Annotation widget for depth control 
+class AnnotateDepths(QtGui.QWidget):
+	def __init__(self, src, dc):
+		super(AnnotateDepths, self).__init__()
+
+		self.src = src
+		self.dc = dc
+		self.annotate = AnnotateWidget(src, None, None, None)
+
+		# Signal for updating all the other annotations
+		self.s = UpdateSignal()
+
+		self.init_ui()
+
+		# Connect annotation updated signal
+		self.dc.s.selected_annotated.connect(self.annotate_selected)
+
+	def init_ui(self):
+		layout = QtGui.QVBoxLayout()
+		layout.setMargin(0)
+		layout.setContentsMargins(0,0,0,0)
+		layout.setSpacing(0)
+		layout.addWidget(self.annotate)
+
+		self.button = QtGui.QPushButton('Annotate')
+		self.button.setCheckable(True)
+		self.button.clicked.connect(self.toggle)
+
+		layout.addWidget(self.button)
+
+		self.setLayout(layout)
+		self.show()
+		self.annotate.hide()
+
+	def toggle(self):
+		if self.button.isChecked():
+			self.annotate.show()
+			self.annotate.setFixedHeight(settings.plot_height * 3/4.)
+			self.dc.annotation_mode = True
+
+		else:
+			self.annotate.hide()
+			self.annotate.list_widget.clearSelection()
+			self.dc.annotation_mode = False
+
+	def annotate_selected(self, depths):
+		labels = [str(item.text()) for item in self.annotate.list_widget.selectedItems()]
+		self.s.annotations_updated.emit((depths, labels))
+
+
+
+# Annotation widget for patient diagnosis
 class AnnotateControl(QtGui.QWidget):
 
 	def __init__(self, src):

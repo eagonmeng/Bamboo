@@ -7,4 +7,4 @@ from graph_area import GraphArea
 from depth_control import DepthControl
 from views import Views
 from dock_title_bar import DockTitleBar
-from annotate_widget import AnnotateWidget, AnnotateControl
+from annotate_widget import AnnotateWidget, AnnotateControl, AnnotateDepths

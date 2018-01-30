@@ -4,15 +4,21 @@ from bisect import bisect_left
 from PyQt4 import QtGui, QtCore
 
 
+VERTICAL_PADDING_FRACTION = 1. / 20
+
 # Signal class
 class UpdateSignal(QtCore.QObject):
 
     selected_updated = QtCore.pyqtSignal(list)
+    selected_annotated = QtCore.pyqtSignal(list)
+    set_defaults = QtCore.pyqtSignal()
+    wheel_updated = QtCore.pyqtSignal(QtCore.QEvent)
+    translation_updated = QtCore.pyqtSignal(float)
 
 
 class DepthControl(QtGui.QWidget):
 
-    def __init__(self):
+    def __init__(self, vpf=VERTICAL_PADDING_FRACTION):
         super(DepthControl, self).__init__()
 
         self.rubberband = QtGui.QRubberBand(
@@ -21,6 +27,9 @@ class DepthControl(QtGui.QWidget):
 
         # Control bool for active selection
         self.active_select = False
+
+        # Vertical padding fraction (of height)
+        self.vpf = vpf
 
         self.initUI()
 
@@ -40,9 +49,6 @@ class DepthControl(QtGui.QWidget):
         # Size parameters (fractions of total size)
         self.notch_width_fraction = 1. / 5
 
-        # Vertical padding fraction (of height)
-        self.vpf = 1. / 10
-
         # Zoom stuffs
         cutoffs = [5, 2]
         levels = 3
@@ -58,6 +64,9 @@ class DepthControl(QtGui.QWidget):
 
         # Signal
         self.s = UpdateSignal()
+
+        # Annotation mode
+        self.annotation_mode = False
 
     def set_defaults(self, start=25, end=-5, unit_value=1, notch_disp=5):
         self.start = start  # Value associated with top pixel of axis
@@ -255,6 +264,8 @@ class DepthControl(QtGui.QWidget):
                     nh)
 
     def translation(self, dy):
+        dy = float(dy) / self.get_unit_height()
+
         self.mid += dy
         self.start += dy
         self.end += dy
@@ -286,6 +297,8 @@ class DepthControl(QtGui.QWidget):
                 self.drag):
             self.set_defaults()
             self.repaint()
+            self.active_select = True
+            self.s.set_defaults.emit()
 
         QtGui.QWidget.mousePressEvent(self, event)
 
@@ -297,7 +310,11 @@ class DepthControl(QtGui.QWidget):
         elif self.drag:
             dy = event.pos().y() - self.drag_origin
             self.drag_origin = event.pos().y()
-            self.translation(float(dy) / self.get_unit_height())
+
+            # Translate and notify others
+            self.active_select = True
+            self.s.translation_updated.emit(float(dy))
+            self.translation(float(dy))
 
         # Check for tooltips
         text = self.d_tooltips.tooltip(event.pos())
@@ -314,27 +331,42 @@ class DepthControl(QtGui.QWidget):
             rect = self.rubberband.geometry()
 
             # Find selected
-            del self.selected[:]
+            newly_selected = []
             depths = zip(self.depths, self.depth_heights)
             for depth in depths:
 
                 # Assuming depth x = middle line, depth y in list
                 point = (self.size().width() / 2, depth[1])
                 if rect.contains(*point):
-                    self.selected.append(depth[0])
+                    # self.selected.append(depth[0])
+                    newly_selected.append(depth[0])
 
-            if self.selected:
-                print('\nSelected: ' + str(self.selected))
 
-            # Make sure to set self as actively being selected
-            self.active_select = True
+            if self.annotation_mode:
+                self.s.selected_annotated.emit(newly_selected)
+            else:
+                del self.selected[:]
+                self.selected = newly_selected
+                if self.selected:
+                    print('\nSelected: ' + str(self.selected))
 
-            self.s.selected_updated.emit(self.selected)
+                # Make sure to set self as actively being selected
+                self.active_select = True
+
+                self.s.selected_updated.emit(self.selected)
+
             # self.repaint()
         elif event.button() == QtCore.Qt.RightButton:
             self.drag = False
 
     def wheelEvent(self, event):
+        # Notify other links
+        self.active_select = True
+        self.s.wheel_updated.emit(event)
+        self.wheel_zoom(event)
+
+    def wheel_zoom(self, event):
+
         dz = event.delta() / 120  # Standard 120 unit per notch scroll speed
         change = self.zoom ** int(-dz)
         self.start = ((self.start - self.mid) * change) + self.mid
@@ -360,8 +392,8 @@ class DepthControl(QtGui.QWidget):
 
         self.updateNotches()
         self.repaint()
+        QtGui.QWidget.wheelEvent(self, event)        
 
-        QtGui.QWidget.wheelEvent(self, event)
 
 
 class DepthTooltip(QtGui.QWidget):

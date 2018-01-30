@@ -73,6 +73,9 @@ class DefaultPlotWidget(pg.PlotWidget):
         # Signal for updating title of dock
         self.s = UpdateSignal()
 
+        # Guard flag
+        self.guard = False
+
 
         '''
         Audio play back features
@@ -98,6 +101,7 @@ class DefaultPlotWidget(pg.PlotWidget):
         # Add signals to button
         self.play_button.clicked.connect(self.play_audio)
         self.play_button.right_clicked.connect(self.swap_audio)
+        self.src.s.stop_audio.connect(self.external_pause)
 
         # Add buttons
         self.scene().addWidget(self.play_button)
@@ -122,21 +126,46 @@ class DefaultPlotWidget(pg.PlotWidget):
             data = preprocess_audio(self.data, spikes_only=self.play_spike_audio)
 
             # Track progress
-            self.audio_line = self.addLine(x=0)
-            self.audio_timer = pg.QtCore.QTimer()
-            self.audio_timer.setInterval(AUDIO_TIMER_UPDATE)
-            self.audio_timer.timeout.connect(self.update_audio_line)
+            if settings.show_audio_line:
+                self.audio_line = self.addLine(x=0)
+                self.audio_timer = pg.QtCore.QTimer()
+                self.audio_timer.setInterval(AUDIO_TIMER_UPDATE)
+                self.audio_timer.timeout.connect(self.update_audio_line)
+            sd.stop()
             sd.play(data)
-            self.audio_timer.start()
+            if settings.show_audio_line:
+                self.audio_timer.start()
+
+            # Notify all other audio components
+            self.guard = True
+            self.src.s.stop_audio.emit()
             
         else:
             sd.stop()
             self.audio_timer.stop()
-            self.audio_line.hide()
-            self.audio_line = None
+            if settings.show_audio_line:
+                self.audio_line.hide()
+                self.audio_line = None
+
+    # Stop audio on signal
+    def external_pause(self):
+        if not self.guard:
+            if self.play_button.isChecked():
+                self.audio_timer.stop()
+
+                if settings.show_audio_line:
+                    self.audio_line.hide()
+                    self.audio_line = None
+
+                self.play_button.setChecked(False)
+        else:
+            self.guard = False
 
     # Swap the audio mode
     def swap_audio(self):
+        if self.play_button.isChecked():
+            self.play_button.click()
+        
         if self.play_spike_audio:
             self.play_button.setText('Audio')
             self.play_button.resize(self.play_button.sizeHint().width(), self.play_button.sizeHint().height())

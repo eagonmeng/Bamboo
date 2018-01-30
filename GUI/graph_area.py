@@ -142,7 +142,11 @@ class GraphArea(pg.QtGui.QWidget):
         self.auto_default_range = settings.auto_default_range
 
         # Depth control
-        self.dc = GUI.DepthControl()
+        if settings.annotation_on:
+            self.dc = GUI.DepthControl(vpf=1./40)
+        else:
+            self.dc = GUI.DepthControl()
+        
         self.dc.s.selected_updated.connect(self.depths_updated)
         self.dc.display_hashes = settings.preprocess_hashes
 
@@ -255,7 +259,7 @@ class GraphArea(pg.QtGui.QWidget):
 
         # Main display
         self.dock_area = DockArea()
-        self.min_plot_height = 200
+        self.min_plot_height = settings.plot_height
 
         # Scroll widget
         self.scroll.setWidgetResizable(True)
@@ -275,6 +279,8 @@ class GraphArea(pg.QtGui.QWidget):
         # Position depth control and main displays
         hbox2 = pg.QtGui.QHBoxLayout()
         vbox2 = pg.QtGui.QVBoxLayout()
+        vbox2.setMargin(0)
+        hbox2.setMargin(0)
 
         # Add horizontal slider
         # self.horizontal_axis = XAxisControl()
@@ -283,7 +289,25 @@ class GraphArea(pg.QtGui.QWidget):
 
         # 90% to 10% graph to depth control split; add customizability?
         hbox2.addLayout(vbox2, stretch=9)
-        hbox2.addWidget(self.dc, stretch=1)
+
+        # Set the depth control inside an optional vbox for annotation possibility
+        if settings.annotation_on:
+            vbox3 = pg.QtGui.QVBoxLayout()
+            vbox3.setMargin(0)
+            vbox3.setSpacing(2)
+            vbox3.setContentsMargins(0,0,0,0)
+
+            # Depth control
+            depth_annotate = GUI.AnnotateDepths(self.src, self.dc)
+            depth_annotate.s.annotations_updated.connect(self.update_annotations)
+            # depth_annotate.hide()
+            # depth_annotate.setSizePolicy(pg.QtGui.QSizePolicy.Minimum, pg.QtGui.QSizePolicy.Minimum)
+            vbox3.addWidget(self.dc, stretch=10)
+            vbox3.addWidget(depth_annotate, stretch=0)
+            hbox2.addLayout(vbox3, stretch=1)
+        else:
+            hbox2.addWidget(self.dc, stretch=1)
+
         vbox.addLayout(hbox2)
         self.setLayout(vbox)
 
@@ -552,6 +576,31 @@ class GraphArea(pg.QtGui.QWidget):
             (float(self.y_range_min.text()), float(self.y_range_max.text()))
         )
 
+    # Update annotations across all the necessary depths for the patient
+    def update_annotations(self, update):
+        # Update is tuple of form (depths, labels)
+        depths, labels = update
+
+        ch_nr = self.src.get_channel_number(self.ccombo.value())
+        patient = self.src.patients[self.cur_patient]
+
+        for depth in depths:
+            # Update all annotation widgets
+            if depth in self.selected_depths:
+                dock = self.selected_depths[depth]
+                dock.widgets[0].update_annotation(labels)
+            # Update patient for depths not currently displayed
+            else:
+                # Calculate current id
+                cur_id = (depth, ch_nr)
+
+                # Check if depth_labels already has labels
+                if cur_id not in patient.depth_labels:
+                    patient.depth_labels[cur_id] = labels
+                else:
+                    for label in labels:
+                        if label not in patient.depth_labels[cur_id]:
+                            patient.depth_labels[cur_id].append(label)
 
 ''' 
 Old update method
@@ -621,5 +670,19 @@ class SplitDockWidget(QtGui.QWidget):
                 self.splitter.moveSplitter(max_range - width, 1)
             else:
                 self.splitter.moveSplitter(max_range, 1)
+
+
+    '''
+    Application specific methods (not for general split dock)
+    '''
+    # Annotation method
+    def update_annotation(self, labels):
+        # Assuming that the second widget is an annotation widget
+        if self.second_widget is not None:
+            for label in labels:
+                found = self.second_widget.list_widget.findItems(label, QtCore.Qt.MatchExactly)
+                if len(found) > 0:
+                    self.second_widget.list_widget.setItemSelected(found[0], True)
+
 
 

@@ -1,7 +1,7 @@
 from PyQt4 import QtCore
 
 
-# Control for maintaining linked viewss
+# Control for maintaining linked views
 class ViewLink(object):
 	def __init__(self, linked, link_id):
 		# Expect linked views as list
@@ -15,13 +15,22 @@ class ViewLink(object):
 			self.add_link(view)
 
 	def add_link(self, view):
+		# Depth control syncing
 		view.dc.s.selected_updated.connect(self.depths_updated)
+		view.dc.s.set_defaults.connect(self.dc_set_defaults)
+		view.dc.s.wheel_updated.connect(self.dc_wheel_event)
+		view.dc.s.translation_updated.connect(self.dc_translation)
+
+		# Graph area syncing
 		view.pcombo.currentIndexChanged[str].connect(self.patient_updated)
 		view.scroll.verticalScrollBar().valueChanged.connect(self.scroll_updated)
 		view.cur_link = self
 
 		self.sync(view)
 		self.linked.append(view)
+
+		# Re-center all depth control views
+		self.dc_set_defaults()
 
 	def purge(self, view):
 		view.cur_link = None
@@ -74,4 +83,42 @@ class ViewLink(object):
 				view.scroll.verticalScrollBar().setValue(sld_value)
 			self.guard = False
 
+	'''
+	For all these depth control syncing features, we probably don't need self.guard
+	But just incase we want to sync them in the future, I'm keeping the structure
+	A decorator would also have saved a few lines
+	'''
+	@QtCore.pyqtSlot()
+	def dc_set_defaults(self):
+		if not self.guard:
+			self.guard = True
+			for view in self.linked:
+				if view.dc.active_select:
+					view.dc.active_select = False
+				else:
+					view.dc.set_defaults()
+					view.dc.repaint()
+			self.guard = False
+
+	@QtCore.pyqtSlot(QtCore.QEvent)
+	def dc_wheel_event(self, event):
+		if not self.guard:
+			self.guard = True
+			for view in self.linked:
+				if view.dc.active_select:
+					view.dc.active_select = False
+				else:
+					view.dc.wheel_zoom(event)
+			self.guard = False
+
+	@QtCore.pyqtSlot(float)
+	def dc_translation(self, dy):
+		if not self.guard:
+			self.guard = True
+			for view in self.linked:
+				if view.dc.active_select:
+					view.dc.active_select = False
+				else:
+					view.dc.translation(dy)
+			self.guard = False
 

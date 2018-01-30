@@ -281,7 +281,8 @@ class Views(QtGui.QWidget):
         self.add_view(True)
 
         # Activate the triple channel method of the graph area
-        self.docks[0].title.triple()
+        if settings.three_channels:
+            self.docks[0].title.triple()
 
         # Make all docks non-closable
         # for dock in self.docks:
