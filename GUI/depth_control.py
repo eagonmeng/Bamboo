@@ -2,9 +2,15 @@ import math
 import numpy as np
 from bisect import bisect_left
 from PyQt4 import QtGui, QtCore
+from scipy.signal import savgol_filter, butter, filtfilt
+from core.data import settings
 
 
+# Constant settings
 VERTICAL_PADDING_FRACTION = 1. / 20
+HASH_LINE_COLOR = (50, 50, 50, 128)
+HASH_BACKGROUND_COLOR = (150, 150, 150, 128)
+
 
 # Signal class
 class UpdateSignal(QtCore.QObject):
@@ -68,7 +74,7 @@ class DepthControl(QtGui.QWidget):
         # Annotation mode
         self.annotation_mode = False
 
-    def set_defaults(self, start=25, end=-5, unit_value=1, notch_disp=5):
+    def set_defaults(self, start=settings.depth_control_axis[0], end=settings.depth_control_axis[1], unit_value=1, notch_disp=5):
         self.start = start  # Value associated with top pixel of axis
         self.end = end
         self.mid = (self.start + self.end) / 2
@@ -129,6 +135,8 @@ class DepthControl(QtGui.QWidget):
 
         self.drawAxis(qp)
 
+        self.draw_smoothed_hash(qp)
+
         size = self.size()
         width = size.width()
         height = size.height()
@@ -159,7 +167,7 @@ class DepthControl(QtGui.QWidget):
                     if self.patient is not None and self.channel is not None:
                         hashpen = QtGui.QPen()
                         hashpen.setWidth(2)
-                        color = QtGui.QColor(50,50,50,128)
+                        color = QtGui.QColor(*HASH_LINE_COLOR)
                         hashpen.setColor(color)
                         qp.setPen(hashpen)
 
@@ -193,6 +201,7 @@ class DepthControl(QtGui.QWidget):
             adjusted_depths, depth_widths, self.depth_heights, 
             pen_width, hashrates)
 
+    # Draw the axis
     def drawAxis(self, qp):
 
         size = self.size()
@@ -280,6 +289,86 @@ class DepthControl(QtGui.QWidget):
             self.end / self.unit_value) * float(self.unit_value) - self.unit_value
         self.notches = np.arange(start, end, -self.unit_value)
 
+    # Draw the smoothed hashfunction
+    def draw_smoothed_hash(self, qp):
+        if self.display_hashes and self.patient is not None and self.channel is not None:
+
+            # Constants
+            size = self.size()
+            width = size.width()
+            height = size.height()
+            v_padding = height * self.vpf
+            axis_height = height - (2 * v_padding)
+            unit_height = self.get_unit_height()
+
+            # Vector to smooth
+            smoothed = np.zeros(int(self.get_axis_height())+1)
+
+            # Offset factor used in main drawWidget method
+            pen_width = 3
+
+            # Loop through all relevant depths
+            current = []
+            for depth in self.depths:
+                depth_height = (height / 2.) - (depth - self.mid) * unit_height
+                depth_width = width / 2
+                if (depth_height >= v_padding - pen_width and
+                        depth_height <= v_padding + axis_height):
+                # if (depth_height >= v_padding and
+                #         depth_height <= v_padding + axis_height):
+
+                    # Normalized hash value
+                    normalized = self.patient.hash_depth_list[self.channel][depth]
+                    smoothed[int(depth_height - v_padding)] = normalized
+                    current.append(normalized)
+
+            # Saviztky-Golay implementation
+            # smoothed = savgol_filter(smoothed, settings.smooth_window, settings.smooth_polynomial)
+            if current:
+                # Forward-background filter
+                b, a = butter(settings.smooth_order, settings.smooth_cutoff)
+                smoothed = filtfilt(b, a, smoothed)
+
+                # Normalize
+                if np.max(smoothed) != 0:
+                    smoothed = smoothed/float(np.max(smoothed))
+                    smoothed = smoothed * float(np.max(current))
+
+                # Cutoff all values exceeding depth boundaries
+                # last_height = (height / 2.) - (self.depths[-1] - self.mid) * unit_height - v_padding
+                # first_height = (height / 2.) - (self.depths[0] - self.mid) * unit_height - v_padding
+                # first_height = max(int(first_height), 0)
+                # last_height = min(len(smoothed), int(last_height))
+                # smoothed[last_height:] = 0
+                # smoothed[:first_height] = 0
+
+                # Alternative cutoff based on axis maximums
+                first_height = (height/2.)-(settings.depth_control_axis[0]-self.mid)*unit_height-v_padding
+                last_height = (height/2.)-(settings.depth_control_axis[1]-self.mid)*unit_height-v_padding
+                first_height = max(int(first_height), 0)
+                last_height = min(len(smoothed), int(last_height))
+                smoothed[first_height] = 0
+                smoothed[last_height:] = 0
+
+                import pyqtgraph as pg
+                # pg.plot(smoothed)
+                # Now draw the smoothed background
+                for idx, w_ratio in enumerate(smoothed):
+                    if w_ratio > 0:
+                        hashpen = QtGui.QPen()
+                        hashpen.setWidth(2)
+                        color = QtGui.QColor(*HASH_BACKGROUND_COLOR)
+                        hashpen.setColor(color)
+                        qp.setPen(hashpen)
+
+                        # Calculate relative width
+                        x1 = max(int((1-w_ratio)*float(width)/2), 0)
+                        x2 = width - x1
+                        qp.drawLine(x1, v_padding + idx, x2, v_padding + idx)
+
+    '''
+    Interactive elements (mouse control, etc.)
+    '''
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton and not self.drag:
             self.origin = event.pos()

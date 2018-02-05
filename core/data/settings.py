@@ -76,8 +76,17 @@ default_x_range = (0, 100)
 # In mV
 default_y_range = (-50, 50)
 
-#Automatically apply range
+# Automatically apply range
 auto_default_range = True
+
+# Depth Control Settings
+depth_control_axis = (25, -5)
+
+# Hash rate smoothing options (done by Savitzky-Golay filter)
+
+# Butterworth filter parameters
+smooth_order = 5
+smooth_cutoff = 0.1
 
 ## Audio settings ##
 default_spike_audio = False
