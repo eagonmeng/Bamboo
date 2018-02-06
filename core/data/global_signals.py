@@ -7,3 +7,6 @@ class SourceSignal(QtCore.QObject):
 
 	# Sync all audio components
 	stop_audio = QtCore.pyqtSignal()
+
+	# Update depth control
+	repaint_dc = QtCore.pyqtSignal()

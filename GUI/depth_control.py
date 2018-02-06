@@ -10,6 +10,7 @@ from core.data import settings
 VERTICAL_PADDING_FRACTION = 1. / 20
 HASH_LINE_COLOR = (50, 50, 50, 128)
 HASH_BACKGROUND_COLOR = (150, 150, 150, 128)
+DOTS_COLOR = (0, 0, 0)
 
 
 # Signal class
@@ -133,8 +134,10 @@ class DepthControl(QtGui.QWidget):
 
     def drawWidget(self, qp):
 
+        # Draw the axis
         self.drawAxis(qp)
 
+        # Draw the smoothed hashrates
         self.draw_smoothed_hash(qp)
 
         size = self.size()
@@ -200,6 +203,9 @@ class DepthControl(QtGui.QWidget):
         self.d_tooltips = DepthTooltip(
             adjusted_depths, depth_widths, self.depth_heights, 
             pen_width, hashrates)
+
+        # Draw the bar display on the side
+        self.draw_annotation_bar(qp)
 
     # Draw the axis
     def drawAxis(self, qp):
@@ -366,6 +372,50 @@ class DepthControl(QtGui.QWidget):
                         x2 = width - x1
                         qp.drawLine(x1, v_padding + idx, x2, v_padding + idx)
 
+    # Draw annotation progress bar
+    def draw_annotation_bar(self, qp):
+        if self.patient is not None and self.channel is not None:
+
+            # Constants
+            size = self.size()
+            width = size.width()
+            height = size.height()
+            v_padding = height * self.vpf
+            axis_height = height - (2 * v_padding)
+            unit_height = self.get_unit_height()
+
+            # Depth mapping dictionary
+            depths_dict = dict(zip(self.depths, self.depth_heights))
+
+            bar, dots = self.patient.get_annotation_markers(self.channel)
+
+            # Draw all bars
+            pen = QtGui.QPen()
+            pen.setWidth(3)
+            for item in bar:
+                depths, label, color = item
+                color = QtGui.QColor(*color)
+                pen.setColor(color)
+                qp.setPen(pen)
+
+                # If the bar is just a point
+                if depths[0] == depths[1]:
+                    qp.drawPoint(width, depths_dict[depths[0]])
+                else:
+                    qp.drawLine(width, depths_dict[depths[0]], width, depths_dict[depths[1]])
+                
+                # Load the tooltip for bars
+                self.d_tooltips.load_bar((depths, label))
+
+            # Draw all dots
+            pen.setColor(QtGui.QColor(*DOTS_COLOR))
+            qp.setPen(pen)
+            for dot in dots:
+                qp.drawPoint(width, depths_dict[dot[0]])
+
+                # Load the tooltip for dots
+                self.d_tooltips.load_dot(dot)
+
     '''
     Interactive elements (mouse control, etc.)
     '''
@@ -433,6 +483,7 @@ class DepthControl(QtGui.QWidget):
 
             if self.annotation_mode:
                 self.s.selected_annotated.emit(newly_selected)
+                self.repaint()
             else:
                 del self.selected[:]
                 self.selected = newly_selected
@@ -495,6 +546,13 @@ class DepthTooltip(QtGui.QWidget):
         self.length = self.depths.size
         self.hashrates = hashrates
 
+        # Empty storage for custom displays
+        self.bars = []
+        self.dots = []
+
+        # Create depth dictionary
+        self.depth_dict = dict(zip(self.depths, self.depth_heights))
+
         # Adjust for minor display discrepancies
         self.offsets()
 
@@ -505,6 +563,36 @@ class DepthTooltip(QtGui.QWidget):
         # Makes it easier to acquire a point
         self.pen_width = self.pen_width + .7
 
+        # Alternative option for even greater ease
+        self.fat_width = self.pen_width + 2
+
+
+    '''
+    Annotation methods
+    '''
+    # Initialize tooltips for bars
+    def load_bar(self, bar):
+        # Format of bar is ((d1, d2), text)
+        depths, text = bar
+        if depths[0] == depths[1]:
+            self.load_dot((depths[0], text))
+        else:
+            new = ((self.depth_dict[depths[0]], self.depth_dict[depths[1]]), text)
+            if new not in self.bars:
+                self.bars.append(new)
+
+    # Initialize tooltip for dots
+    def load_dot(self, dot):
+        # Format of dot is (depth, text)
+        depth, text = dot
+        text = ', '.join(text)
+        new = (self.depth_dict[depth], text)
+        if new not in self.dots:
+            self.dots.append(new)
+
+    '''
+    Tooltip
+    '''
     def tooltip(self, pos):
         x_vec = np.abs(np.ones(self.length) * pos.x() - self.depth_widths)
         y_vec = np.abs(np.ones(self.length) * pos.y() - self.depth_heights)
@@ -522,5 +610,24 @@ class DepthTooltip(QtGui.QWidget):
                     text = str(depth)
                 else:
                     text = str(depth) + ', HR: ' + str(self.hashrates[depth]) + 'Hz'
+
+        # In order of priority, we overlay the bar on the right
+        width = self.depth_widths[0] * 2
+        if np.abs(pos.x() - width) <= self.fat_width:
+            # Now we check for bars first
+            for bar in self.bars:
+                depths, label = bar
+                if depths[0]-self.fat_width <= pos.y() and pos.y() <= depths[1]+self.fat_width:
+                    text = label
+
+            # Check for dots
+            for dot in self.dots:
+                depth, label = dot
+                if depth-self.fat_width <= pos.y() and pos.y() <= depth+self.fat_width:
+                    if text != '':
+                        text = text + ' and ' + label
+                    else:
+                        text = label
+                    break
 
         return text

@@ -50,6 +50,10 @@ patient_labels = ['Parkinson', 'Dystonia', 'Essential Tremor', 'OCD', 'MDD', 'ST
 depth_labels = ['Spikes', 'STN', 'ZI', 'GPe', 'GPi', 'VIM', 'Thalamus', 'Putamen', 'White Matter', 'Border Cell', 'Dying', 'Artifact']
 target_labels = ['STN', 'GPi', 'VIM']
 
+# Annotation labels to highlight on the depth control
+continuous_labels = ['STN', 'ZI', 'GPe', 'GPi', 'VIM', 'Thalamus', 'Putamen']
+dot_labels = ['Spikes', 'Dying']
+
 
 '''
 GUI Settings

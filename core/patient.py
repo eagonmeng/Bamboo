@@ -4,6 +4,7 @@ from core.data import settings
 from core.data import depths
 from core.data import loading
 import numpy as np
+import colorsys
 
 
 class Patient(object):
@@ -27,6 +28,9 @@ class Patient(object):
         self.hashrates = None
         self.hash_depth_list = None
         self.load_hashrates()
+
+        # Load colormap
+        self.annotation_color_map()
 
     def load_depths(self):
         '''
@@ -109,6 +113,73 @@ class Patient(object):
                     # Format for key: Depth, Channel Nr.
                     label_id = (float(labels[0]), int(labels[1]))
                     self.depth_labels[label_id] = labels[2:]
+
+    # Create annotation color map
+    def annotation_color_map(self):
+        self.colormap = {}
+        for i, label in enumerate(settings.continuous_labels):
+            transform = (i)
+            hue = transform / float(len(settings.continuous_labels))
+            color = np.array(colorsys.hsv_to_rgb(hue, .7, 1)) * 255
+            self.colormap[label] = np.rint(color).astype(int)
+
+    # Compute annotation status bar
+    def get_annotation_markers(self, channel):
+        # Loop through all depths
+        bar = []
+        dots = []
+        current_label = None
+        start = None
+        prev = None
+
+        # Convert channel to channel_nr
+        channel_nr = self.source.get_channel_number(channel)
+
+        for depth in self.depths:
+            label_id = (depth, channel_nr)
+            if label_id in self.depth_labels:
+                labels = set(self.depth_labels[label_id])
+                
+                # Find the union of the labels
+                area = set(settings.continuous_labels).intersection(labels)
+                dot = set(settings.dot_labels).intersection(labels)
+
+                # Append all the dot notifications
+                if len(dot) > 0:
+                    dots.append((depth, list(dot)))
+
+                # Calculate the bar component
+                if len(area) == 1:
+                    # Start not being None means we're in a bar
+                    if start is not None:
+
+                        # Extend if we're in the same label
+                        if area.pop() == current_label:
+                            prev = depth
+                            # Skip over while necessary
+                            continue
+
+                    # Otherwise create a new bar
+                    else:
+                        start = depth
+                        prev = depth
+                        current_label = area.pop()
+                        # Skip over while necessary
+                        continue
+
+            # If we haven't continued, that means we need to break
+            if start is not None:
+                # Format is ((start, end), label)
+                bar.append(((start, prev), current_label, self.colormap[current_label]))
+                start = None
+                current_label = None
+                prev = None
+
+        # Wrap up last iteration
+        if start is not None:
+            bar.append(((start, depth), current_label, self.colormap[current_label]))
+
+        return (bar, dots)
 
     '''
     Preprocessing methods

@@ -148,6 +148,7 @@ class GraphArea(pg.QtGui.QWidget):
             self.dc = GUI.DepthControl()
         
         self.dc.s.selected_updated.connect(self.depths_updated)
+        self.src.s.repaint_dc.connect(self.dc.repaint)
         self.dc.display_hashes = settings.preprocess_hashes
 
         # Dict of depths with their plot widgets
@@ -593,10 +594,9 @@ class GraphArea(pg.QtGui.QWidget):
             else:
                 # Calculate current id
                 cur_id = (depth, ch_nr)
-
                 # Check if depth_labels already has labels
                 if cur_id not in patient.depth_labels:
-                    patient.depth_labels[cur_id] = labels
+                    patient.depth_labels[cur_id] = list(labels)
                 else:
                     for label in labels:
                         if label not in patient.depth_labels[cur_id]:

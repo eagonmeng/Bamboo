@@ -100,6 +100,7 @@ class AnnotateWidget(QtGui.QWidget):
 	def selection_changed(self):
 		if self.patient is not None:
 			self.patient.depth_labels[self.id] = [str(item.text()) for item in self.list_widget.selectedItems()]
+			self.src.s.repaint_dc.emit()
 
 
 # Annotation widget for depth control 
